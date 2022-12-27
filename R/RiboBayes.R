@@ -9,10 +9,9 @@ library(Metrics)
 library(reshape2)
 library(edgeR)
 library(numbers)
-library(Metrics)
 
-pkm.ribo <- Ribo("/Users/weiqinlu/Downloads/pkm.ribo", rename = rename_default )
-mm.ribo <- Ribo("/Users/weiqinlu/Downloads/all.ribo", rename = rename_default )
+pkm.ribo <- Ribo("/Users/amberluo/Downloads/pkm.ribo", rename = rename_default )
+mm.ribo <- Ribo("/Users/amberluo/Downloads/all.ribo", rename = rename_default )
 all.ribo <- Ribo("/Users/amberluo/Downloads/all (1).ribo", rename = rename_default )
 
 get_read_lengths=function(ribo, experiments, rc_threshold, ld_threshold){
@@ -117,7 +116,7 @@ plot_metagene_by_length=function(ribo, site, positions, lengths, experiment){
   colnames=colnames(metagene)
   metagene <- gather(metagene, position, counts, colnames[3]:colnames[3+radius*2], factor_key=TRUE)
   metagene=metagene%>%group_by(length)%>%mutate(counts=counts/mean(counts))
-  metagene=metagene%>%group_by(length, position)%>%mutate(counts=mean(counts))%>%select(-experiment)%>%mutate(position=as.numeric(position), length=as.character(length))
+  metagene=metagene%>%group_by(length, position)%>%mutate(counts=mean(counts))%>%dplyr::select(-experiment)%>%mutate(position=as.numeric(position), length=as.character(length))
   metagene%>%filter(position %in% positions)%>%ggplot(mapping=aes(x=position, y=counts, color=length))+geom_line()
 }
 get_pshifts=function(ribo, lengths, experiments, graph){
@@ -129,7 +128,7 @@ get_pshifts=function(ribo, lengths, experiments, graph){
   }
   radius=metagene_radius(ribo)
   metagene=data.frame()
-  for(i in lengths){
+  for(i in as.numeric(lengths)){
     temp=get_metagene(ribo, site="stop", range.lower=i, range.upper=i, experiment=experiments, compact=FALSE)
     temp=temp%>%mutate(length=i)
     metagene=rbind(metagene,temp)
@@ -138,7 +137,7 @@ get_pshifts=function(ribo, lengths, experiments, graph){
   colnames=colnames(metagene)
   metagene <- gather(metagene, position, counts, colnames[3]:colnames[3+radius*2], factor_key=TRUE)
   metagene=metagene%>%group_by(length)%>%mutate(counts=counts/mean(counts))
-  metagene=metagene%>%group_by(length, position)%>%mutate(counts=mean(counts))%>%filter(experiment %in% experiments[1])%>%select(-experiment)%>%mutate(position=as.numeric(position))
+  metagene=metagene%>%group_by(length, position)%>%mutate(counts=mean(counts))%>%filter(experiment %in% experiments[1])%>%dplyr::dplyr::select(-experiment)%>%mutate(position=as.numeric(position))
   mod0=c(seq(3, 3+radius, by=3))
   mod1=c(seq(1, 1+radius, by=3))
   mod2=c(seq(2, 2+radius, by=3))
@@ -168,7 +167,7 @@ get_pshifts=function(ribo, lengths, experiments, graph){
     }
     bcounts=b[c(1:(nrow(b)-shift)),]$counts
     bcounts=c(rep(0, shift), bcounts)
-    pcov=rbind(pcov, data.frame("length"=rep(lengths[i], nrow(b)), "position"=c(1:nrow(b)), "counts"=bcounts))
+    pcov=rbind(pcov, data.frame("length"=rep(as.numeric(lengths)[i], nrow(b)), "position"=c(1:nrow(b)), "counts"=bcounts))
     shifts=c(shifts, shift)
   }
   myacf=pcov%>%group_by(position)%>%summarize(counts=mean(counts))
@@ -239,7 +238,7 @@ makeset=function(zcov, zcov_filtered){
   if(nrow(set)==0){
     return(0)
   }
-  set=set%>%select(-avg1, -avg2)
+  set=set%>%dplyr::select(-avg1, -avg2)
   positions=set$position
   mypositions=zcov%>%group_by(experiment)%>%mutate(originalz=(count-mean(count))/sd(count))%>%filter(position %in% positions)
   originalset=dcast(mypositions, position ~ experiment, value.var="originalz")
@@ -427,7 +426,7 @@ getpcov=function(ribo, transcript, lengths, experiments, graph, shifts){
     plot(pshift$position, pshift$count, type="l")
     par(mfrow=c(1,1))
     transcript2=transcript
-    rc=get_internal_region_coordinates(pkm.ribo, alias=TRUE)%>%select(UTR3_start, transcript)%>%filter(transcript==transcript2)
+    rc=get_internal_region_coordinates(pkm.ribo, alias=TRUE)%>%dplyr::select(UTR3_start, transcript)%>%filter(transcript==transcript2)
     stop=rc[[1,1]]
     ocov=get_coverage(ribo.object = ribo,
                       name        = transcript,
@@ -486,6 +485,7 @@ wavetransform=function(cov){
   wavecov=wavecov[,-5]
   return(wavecov)
 }
+
 #clean
 differentialpeaks=function(set){
   exp=ncol(set)-1
@@ -502,7 +502,7 @@ differentialpeaks=function(set){
     set[i, 3+exp]=stats[1, 8]
     set[i, 4+exp]=stats[1, 9]
   }
-  significant=set%>%select(position, statistic, p)%>%filter(p<0.05)
+  significant=set%>%dplyr::select(position, statistic, p)%>%filter(p<0.05)
   newlist=list(set, significant)
   return(newlist)
 }
@@ -540,7 +540,7 @@ adjustscore=function(zcov){
   cov2=cov2%>%filter(score>4)%>%mutate(newscore=ifelse(percent==0, score, ifelse(percent<0, abs(percent)*(counts-singlemeans[group-1])/(singlesds[group-1])+((1-abs(percent))*(counts-localmean)/localsd),
                                                                                  ifelse(percent>0, percent*(counts-singlemeans[group+1])/(singlesds[group+1])+((1-percent)*(counts-localmean)/localsd), 0))))
   cov=cov%>%filter(score<=4)
-  cov2=cov2%>%mutate(score=newscore)%>%select(-newscore)
+  cov2=cov2%>%mutate(score=newscore)%>%dplyr::select(-newscore)
   cov=rbind(cov, cov2)
   cov=cov%>%arrange(position)
   return(cov)
@@ -582,6 +582,32 @@ wavelettransform=function(cov){
   }
   return(list(zcov, zcov_filtered, originalset, kappaset))
 }
+wavelettransform2=function(cov){
+  cov=cov%>%mutate(position=as.numeric(position))
+  cov=cov%>%group_by(experiment)%>%mutate(counts=count/mean(count))
+  cov=wavetransform(cov)
+  zcov=adjustscore(cov)
+  zcov_filtered=zcov%>%filter(score>6 & is.finite(score))
+  if(nrow(zcov_filtered)==0){
+    return(0)
+  }
+  zcov_filtered=removepeaks(zcov_filtered, 3)
+  if(nrow(zcov_filtered)==0){
+    return(0)
+  }
+  sets=makeset2(zcov, zcov_filtered)
+  if(is.double(sets)){
+    return(0)
+  }
+  set=sets[[1]]
+  originalset=sets[[2]]
+  if(is.double(set)){
+    kappaset=0
+  }else{
+    kappaset=makekappaset2(set)
+  }
+  return(list(zcov, zcov_filtered, originalset, kappaset))
+}
 #clean
 get_pause_sites=function(ribo, transcript, shifts, lengths, experiments){
   if(missing(experiments)){
@@ -603,9 +629,9 @@ get_pause_sites=function(ribo, transcript, shifts, lengths, experiments){
   binary=temp[[4]]
   ah=differentialpeaks(originalset)
   allpeaks=ah[[1]]
-  allpeaks=allpeaks%>%mutate(transcript=transcript)%>%mutate(identifier=paste(position, transcript))%>%select(identifier, position, transcript, statistic, p)
+  allpeaks=allpeaks%>%mutate(transcript=transcript)%>%mutate(identifier=paste(position, transcript))%>%dplyr::select(identifier, position, transcript, statistic, p)
   diffpeaks=ah[[2]]
-  diffpeaks=diffpeaks%>%mutate(transcript=transcript)%>%mutate(identifier=paste(position, transcript))%>%select(identifier, position, transcript, statistic, p)
+  diffpeaks=diffpeaks%>%mutate(transcript=transcript)%>%mutate(identifier=paste(position, transcript))%>%dplyr::select(identifier, position, transcript, statistic, p)
   binary=binary%>%mutate(transcript=transcript, identifier=paste(position, transcript))
   originalset=originalset%>%mutate(transcript=transcript, identifier=paste(position, transcript))
   binary=binary[c(9, 1, 8, 2:7)]
@@ -614,6 +640,88 @@ get_pause_sites=function(ribo, transcript, shifts, lengths, experiments){
   numpeaks=nrow(allpeaks)
   diffpeaks=nrow(allpeaks%>%filter(p<0.05))
   return(list(allpeaks, originalset, binary, c(numpeaks, diffpeaks,length)))
+}
+get_pause_sites2=function(ribo, transcript, shifts, lengths, experiments){
+  if(missing(experiments)){
+    experiments=get_experiments(ribo)
+  }
+  if(missing(lengths)){
+    lengths=get_read_lengths(ribo)
+  }
+  cov=getpcov(ribo, transcript, lengths, experiments, graph=FALSE, shifts)
+  temp=wavelettransform2(cov)
+  if(is.double(temp)){
+    return(0)
+  }
+  originalset=temp[[3]]
+  if(is.double(originalset)){
+    return(0)
+  }
+  binary=temp[[4]]
+  ah=differentialpeaks(originalset)
+  allpeaks=ah[[1]]
+  allpeaks=allpeaks%>%mutate(transcript=transcript)%>%mutate(identifier=paste(position, transcript))%>%dplyr::select(identifier, position, transcript, statistic, p)
+  diffpeaks=ah[[2]]
+  diffpeaks=diffpeaks%>%mutate(transcript=transcript)%>%mutate(identifier=paste(position, transcript))%>%dplyr::select(identifier, position, transcript, statistic, p)
+  binary=binary%>%mutate(transcript=transcript, identifier=paste(position, transcript))
+  originalset=originalset%>%mutate(transcript=transcript, identifier=paste(position, transcript))
+  binary=binary[c(9, 1, 8, 2:7)]
+  originalset=originalset[c(9, 1, 8, 2:7)]
+  length=max(cov$position)
+  numpeaks=nrow(allpeaks)
+  diffpeaks=nrow(allpeaks%>%filter(p<0.05))
+  return(list(allpeaks, originalset, binary, c(numpeaks, diffpeaks,length)))
+}
+bayesian_p_adjust=function(sites, graph){
+  function(sites, graph){
+    if(missing(graph)){
+      graph=FALSE
+    }
+    numexperiments=(ncol(sites[[1]][[2]])-3)/2
+    exptype=c()
+    vector=c("CTR", "EXP")
+    for(i in 1:2){
+      for(j in 1:numexperiments){
+        exptype=c(exptype, vector[i])
+      }
+    }
+    exptype <- factor(exptype)
+    counts=get_ps_info(sites)
+    counts=counts%>%dplyr::select(-position, -transcript)
+    for(i in 2:ncol(counts)){
+      counts=counts[counts[,i]>=0,]
+    }
+    identifiers=counts$identifier
+    counts2=get_ps_info(sites)
+    counts2=counts2%>%filter(!(identifier%in%(identifiers)))%>%dplyr::select(-position, -transcript)
+    counts2[counts2 < 0] <- 0
+    counts=rbind(counts, counts2)
+    y <- DGEList(counts=counts[,-1],group=exptype, genes = counts[,1])
+    #keep <- filterByExpr(y)
+    #y <- y[keep,,keep.lib.sizes=FALSE]
+    y <- calcNormFactors(y, method = "TMM")
+
+    design <- model.matrix(~0 + exptype)
+    colnames(design) <- levels(exptype)
+    y <- estimateDisp(y,design)
+    if(graph==TRUE){
+      plotBCV(y)
+      plotMDS(y)
+    }
+    fit <- glmQLFit(y,design)
+    my.contrasts <- makeContrasts(
+      PS_CHANGE = EXP-CTR,
+      levels = design
+    )
+    qlfChange <- glmQLFTest(fit, contrast=my.contrasts[,"PS_CHANGE"])
+    qlfChange=as.data.frame(qlfChange)
+    qlfChange=qlfChange%>%rename(identifier=genes, p=PValue)%>%dplyr::select(identifier, p, logFC)%>%
+      mutate(position=as.numeric(sub(" .*", "", identifier)), transcript=sub(".* ", "", identifier))
+    if(length(get_experiments(ribo)>6)){
+      qlfChange=qlfChange[,c(1, 4, 5, 2, 3)]%>%rename(statistic=logFC)%>%mutate(statistic=-statistic)
+    }
+    return(qlfChange)
+  }
 }
 #temporary function for bad bad situations :(
 listtransform=function(bad){
@@ -631,8 +739,9 @@ listtransform=function(bad){
 ##################################################
 ribo=pkm.ribo
 lengths=get_read_lengths(ribo)
+lengths=as.numeric(lengths)
 experiments=get_experiments(ribo)
-shifts=get_pshifts(ribo, graph=FALSE)
+shifts=get_pshifts(ribo, lengths, graph=FALSE)
 
 rc_CDS <- get_region_counts(ribo.object    = ribo,
                             range.lower = lengths[[1]],
@@ -644,7 +753,7 @@ rc_CDS <- get_region_counts(ribo.object    = ribo,
                             region     = "CDS",
                             compact    = FALSE)
 region_lengths <- get_internal_region_lengths(ribo.object = ribo, alias = TRUE)
-cds=region_lengths%>%select(transcript, CDS)
+cds=region_lengths%>%dplyr::select(transcript, CDS)
 rc_CDS=rc_CDS%>%left_join(cds)%>%mutate(count=count/CDS)
 
 rc_CDS_w = dcast(rc_CDS[,-5], transcript ~ experiment)

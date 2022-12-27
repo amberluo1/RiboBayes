@@ -20,7 +20,7 @@ removezeros=function(sites){
     n=n+1
   }
   return(sites)
-}
+}t
 transcriptdata=function(sites){
   data=data.frame("transcript"=1:length(sites), "numpeaks"=1:length(sites), "length"=1:length(sites))
   data[,1]=names(sites)
@@ -69,12 +69,12 @@ plot_pause_site_conservation=function(sites){
   exp1=categories[1:numexperiments]
   exp2=categories[(numexperiments+1):(numexperiments*2)]
   first=ggvenn(
-    exp1, 
+    exp1,
     fill_color = c("45534CAA", "#3BC000FF", "#0096FF"),
     stroke_size = 1, set_name_size = 4
   )
   second=ggvenn(
-    exp2, 
+    exp2,
     fill_color = c("45534CAA", "#3BC000FF", "#0096FF"),
     stroke_size = 1, set_name_size = 4
   )

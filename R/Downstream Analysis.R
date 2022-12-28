@@ -34,7 +34,18 @@ get_ps_change=function(sites, bayes.adjust){
   }
   return(data)
 }
-plot_pause_site_conservation=function(sites){
+
+#' Load a Matrix
+#'
+#' This function loads a file as a matrix. It assumes that the first column
+#' contains the rownames and the subsequent columns are the sample identifiers.
+#' Any rows with duplicated row names will be dropped with the first one being
+#' kepted.
+#'
+#' @param infile Path to the input file
+#' @return A matrix of the infile
+#' @exportplot
+plot_ps_conservation=function(sites){
   sites=removezeros(sites)
   data=data.frame()
   for(i in 1:length(sites)){
@@ -87,7 +98,7 @@ plot_pause_site_conservation=function(sites){
   print(upset(data, nsets = 6, nintersects = NA, mb.ratio = c(0.5, 0.5),keep.order=TRUE,sets=colnames(data)[4:9],
               order.by = "freq", decreasing = c(TRUE,FALSE)))
 }
-plot_pause_site_regulation=function(sites){
+plot_ps_regulation=function(sites){
   sites=removezeros(sites)
   data=data.frame()
   for(i in 1:length(sites)){
@@ -105,7 +116,7 @@ plot_pause_site_regulation=function(sites){
   )
   )
 }
-plot_pause_site_distribution=function(ribo, sites){
+plot_ps_distribution=function(ribo, sites){
   sites=removezeros(sites)
   rc=get_internal_region_coordinates(ribo, alias=TRUE)
   lengths=get_internal_region_lengths(ribo, alias=TRUE)
@@ -123,7 +134,7 @@ plot_pause_site_distribution=function(ribo, sites){
   b=sigdata%>%ggplot(mapping=aes(x=relativepos, fill=regulation))+geom_density(alpha=0.4)
   print(a+b)
 }
-plot_pause_sites_by_transcript=function(experiment_name, sites){
+plot_ps_by_transcript=function(experiment_name, sites){
   if(missing(experiment_name)){
     experiment_name="ribo"
   }

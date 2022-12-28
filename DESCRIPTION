@@ -1,8 +1,8 @@
 Package: RiboBayes
 Type: Package
 Title: RiboBayes: Assessing the Transcriptome-wide Expression of
-Ribosome Pause Sites in Ribosome Profiling Data with Bayesian
-Wavelet Thresholding
+  Ribosome Pause Sites in Ribosome Profiling Data with Bayesian
+  Wavelet Thresholding
 Version: 0.1.0
 Author: Amber Luo
 Maintainer: Amber Luo (amberluo@mit.edu)
@@ -23,3 +23,6 @@ Imports:
   reshape2
   edgeR
   numbers
+  ggven
+  UpSetR
+RoxygenNote: 7.2.3

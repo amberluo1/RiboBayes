@@ -137,7 +137,7 @@ get_pshifts=function(ribo, lengths, experiments, graph){
   colnames=colnames(metagene)
   metagene <- gather(metagene, position, counts, colnames[3]:colnames[3+radius*2], factor_key=TRUE)
   metagene=metagene%>%group_by(length)%>%mutate(counts=counts/mean(counts))
-  metagene=metagene%>%group_by(length, position)%>%mutate(counts=mean(counts))%>%filter(experiment %in% experiments[1])%>%dplyr::dplyr::select(-experiment)%>%mutate(position=as.numeric(position))
+  metagene=metagene%>%group_by(length, position)%>%mutate(counts=mean(counts))%>%filter(experiment %in% experiments[1])%>%dplyr::select(-experiment)%>%mutate(position=as.numeric(position))
   mod0=c(seq(3, 3+radius, by=3))
   mod1=c(seq(1, 1+radius, by=3))
   mod2=c(seq(2, 2+radius, by=3))
@@ -616,6 +616,9 @@ get_pause_sites=function(ribo, transcript, shifts, lengths, experiments){
   if(missing(lengths)){
     lengths=get_read_lengths(ribo)
   }
+  if(missing(shifts)){
+    shifts=get_pshifts(ribo, lengths, experiments, FALSE)
+  }
   cov=getpcov(ribo, transcript, lengths, experiments, graph=FALSE, shifts)
   cov=cov%>%mutate(position=as.numeric(position))
   temp=wavelettransform(cov)
@@ -673,7 +676,6 @@ get_pause_sites2=function(ribo, transcript, shifts, lengths, experiments){
   return(list(allpeaks, originalset, binary, c(numpeaks, diffpeaks,length)))
 }
 bayesian_p_adjust=function(sites, graph){
-  function(sites, graph){
     if(missing(graph)){
       graph=FALSE
     }
@@ -722,7 +724,6 @@ bayesian_p_adjust=function(sites, graph){
     }
     return(qlfChange)
   }
-}
 #temporary function for bad bad situations :(
 listtransform=function(bad){
   length=length(bad)/3
@@ -762,6 +763,6 @@ sum(high_exp)
 
 transcripts=rc_CDS_w$transcript[high_exp]
 
-sites=mcmapply(function(a,x,y, z, w){
+pkmsites=mcmapply(function(a,x,y, z, w){
   return(get_pause_sites(a,x,y,z,w))
-}, x = transcripts, MoreArgs=list(a=ribo, y=shifts, z=lengths, w=experiments), mc.cores=3)
+}, x = transcripts, MoreArgs=list(a=ribo, y=shifts, z=lengths, w=experiments), mc.cores=5)

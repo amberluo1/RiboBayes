@@ -107,6 +107,7 @@ plot_metagene_by_length=function(ribo, site, positions, lengths, experiment){
     lengths=get_read_lengths(ribo)
   }
   metagene=data.frame()
+  lengths=as.numeric(lengths)
   for(i in lengths){
     temp=get_metagene(ribo, site=site, range.lower=i, range.upper=i, experiment=experiment, compact=FALSE)
     temp=temp%>%mutate(length=i)
@@ -763,6 +764,6 @@ sum(high_exp)
 
 transcripts=rc_CDS_w$transcript[high_exp]
 
-pkmsites=mcmapply(function(a,x,y, z, w){
-  return(get_pause_sites(a,x,y,z,w))
-}, x = transcripts, MoreArgs=list(a=ribo, y=shifts, z=lengths, w=experiments), mc.cores=5)
+test=mcmapply(function(a,x,y, z, w){
+  return(get_pause_sites_h(a,x,y,z,w))
+}, x = transcripts[1:10], MoreArgs=list(a=ribo, y=shifts, z=lengths, w=experiments), mc.cores=5)

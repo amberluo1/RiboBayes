@@ -91,7 +91,7 @@ get_pshifts=function(ribo, lengths, experiments, graph){
     pshift=pcov%>%mutate(length=as.character(length))%>%filter(position %in% c(1:get_info(ribo)$attributes$left_span))%>%ggplot(mapping=aes(x=position, y=counts, color=length))+geom_line()
     print(original + pshift)
     metagene=data.frame()
-    for(i in lengths){
+    for(i in as.numeric(lengths)){
       temp=get_metagene(ribo, site="stop", range.lower=i, range.upper=i, experiment=experiments, compact=FALSE)
       temp=temp%>%mutate(length=i)
       metagene=rbind(metagene,temp)
@@ -120,6 +120,7 @@ getpcov=function(ribo, transcript, lengths, experiments, graph, shifts){
   if(missing(graph)){
     graph==TRUE
   }
+  lengths=as.numeric(lengths)
   cov=get_coverage(ribo.object = ribo,
                    name        = transcript,
                    range.lower = lengths[1],
@@ -166,7 +167,7 @@ getpcov=function(ribo, transcript, lengths, experiments, graph, shifts){
     plot(pshift$position, pshift$count, type="l")
     par(mfrow=c(1,1))
     transcript2=transcript
-    rc=get_internal_region_coordinates(pkm.ribo, alias=TRUE)%>%dplyr::select(UTR3_start, transcript)%>%filter(transcript==transcript2)
+    rc=get_internal_region_coordinates(ribo, alias=TRUE)%>%dplyr::select(UTR3_start, transcript)%>%filter(transcript==transcript2)
     stop=rc[[1,1]]
     ocov=get_coverage(ribo.object = ribo,
                       name        = transcript,
@@ -179,19 +180,16 @@ getpcov=function(ribo, transcript, lengths, experiments, graph, shifts){
                       experiment  = experiments)
     ocov=ocov%>%mutate(position=as.numeric(position), length=as.character(length))
     ocov=ocov%>%group_by(position, length)%>%summarize(count=sum(count))
-    original=ocov%>%filter(position %in% c((stop-120):(stop-80)))%>%ggplot(mapping=aes(x=position, y=count, color=length))+geom_line()
+    original=ocov%>%filter(position %in% c((stop-120):(stop-80)))%>%ggplot(mapping=aes(x=position, y=count, color=length))+geom_line()+ggtitle("Original coverage")
     pshift=ncov%>%group_by(position, length)%>%summarize(count=sum(count))
     pshift=pshift%>%mutate(position=as.numeric(position), length=as.character(length))%>%filter(position %in% c((stop-120):(stop-80)))
-    pshift=pshift%>%ggplot(mapping=aes(x=position, y=count, color=length))+geom_line()
+    pshift=pshift%>%ggplot(mapping=aes(x=position, y=count, color=length))+geom_line()+ggtitle("P-site shifted coverage")
     print(original + pshift)
-    wow=ocov%>%group_by(position)%>%summarize(count=sum(count))
-    wow2=ncov%>%group_by(position)%>%summarize(count=sum(count))
-    ocov=ocov%>%group_by(position)%>%summarize(count=sum(count))%>%mutate(position=as.numeric(position))
-    ncov=ncov%>%group_by(position)%>%summarize(count=sum(count))%>%mutate(position=as.numeric(position))
-    ocov2=ocov%>%filter(position %in% c((stop-50):(stop-20)))
-    ncov2=ncov%>%filter(position %in% c((stop-50):(stop-20)))
-    original=ocov2%>%ggplot(mapping=aes(x=position, y=count))+geom_line()
-    pshift=ncov2%>%ggplot(mapping=aes(x=position, y=count))+geom_line()
+
+    ocov=ocov%>%group_by(position)%>%summarize(count=sum(count))%>%mutate(position=as.numeric(position))%>%filter(position %in% c((stop-50):(stop-20)))
+    ncov=ncov%>%group_by(position)%>%summarize(count=sum(count))%>%mutate(position=as.numeric(position))%>%filter(position %in% c((stop-50):(stop-20)))
+    original=ocov%>%ggplot(mapping=aes(x=position, y=count))+geom_line()+ggtitle("Original coverage")
+    pshift=ncov2%>%ggplot(mapping=aes(x=position, y=count))+geom_line()+ggtitle("P-site shifted coverage")
     print(original + pshift)
   }
   return(cov)

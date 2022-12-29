@@ -175,20 +175,7 @@ wavelettransform2=function(cov){
   }
   return(list(zcov, zcov_filtered, originalset, kappaset))
 }
-
-#' Create a RiboBayes object from a Ribo object
-#'
-#' Takes as input a .ribo object and returns a RiboBayes object containing information on the
-#' location and differential expression data of all ribosome pause sites on the inputted transcripts.
-#'
-#' @param ribo .ribo file
-#' @param transcript List of transcripts to detect pause sites on
-#' @param shifts List of P-site shifts (may phase this out)
-#' @param lengths List of read lengths to use in pause site detection (for QC purposes)
-#' @param experiments List of ribosome profiling experiments to draw data from
-#' @return A RiboBayes object containing []
-#' @export
-get_pause_sites=function(ribo, transcript, shifts, lengths, experiments){
+get_pause_sites_h=function(ribo, transcript, p_shift, shifts, lengths, experiments, cores){
   if(missing(experiments)){
     experiments=get_experiments(ribo)
   }
@@ -221,5 +208,44 @@ get_pause_sites=function(ribo, transcript, shifts, lengths, experiments){
   length=max(cov$position)
   numpeaks=nrow(allpeaks)
   diffpeaks=nrow(allpeaks%>%filter(p<0.05))
+
   return(list(allpeaks, originalset, binary, c(numpeaks, diffpeaks,length)))
 }
+
+#' Create a RiboBayes object from a Ribo object
+#'
+#' Takes as input a .ribo object and returns a RiboBayes object containing information on the
+#' location and differential expression data of all ribosome pause sites on the inputted transcripts.
+#'
+#' @param ribo Ribo object
+#' @param transcripts Character vector of transcript names to detect pause sites on.
+#' @param p_shift if FALSE, P-site adjustments are not applied. Defaults to TRUE.
+#' @param experiments Character vector of ribosome profiling experiments to draw data from.
+#' @param cores Number of cores to run get_pause_sites() on.
+#' @return A RiboBayes object containing []
+#' @export
+get_pause_sites=function(ribo, transcripts, p_shift, experiments, cores){
+  if(missing(experiments)){
+    experiments=get_experiments(ribo)
+  }
+  if(missing(cores)){
+    cores=1
+  }
+  if(missing(p_shift)){
+    p_shift=TRUE
+  }
+  if(p_shift){
+    lengths=get_read_lengths(ribo)
+    shifts=get_pshifts(ribo, lengths, experiments, graph=FALSE)
+  }else{
+    lengths=(length_min(ribo):length_max(ribo))
+    temp=length_max(ribo)-length_min(ribo)+1
+    shifts=integer(temp)
+    names(shifts)=lengths
+  }
+  sites=mcmapply(function(a,x,y, z, w){
+    return(get_pause_sites_h(a,x,y,z,w))
+  }, x = transcripts, MoreArgs=list(a=ribo, y=shifts, z=lengths, w=experiments), mc.cores=cores)
+  return(sites)
+}
+s

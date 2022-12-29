@@ -118,7 +118,7 @@ getpcov=function(ribo, transcript, lengths, experiments, graph, shifts){
     shifts=get_pshifts(ribo, lengths, experiments, graph=FALSE)
   }
   if(missing(graph)){
-    graph==TRUE
+    graph=FALSE
   }
   lengths=as.numeric(lengths)
   cov=get_coverage(ribo.object = ribo,

@@ -766,4 +766,4 @@ transcripts=rc_CDS_w$transcript[high_exp]
 
 test=mcmapply(function(a,x,y, z, w){
   return(get_pause_sites_h(a,x,y,z,w))
-}, x = transcripts[1:10], MoreArgs=list(a=ribo, y=shifts, z=lengths, w=experiments), mc.cores=5)
+}, x = transcripts[1:10], MoreArgs=list(a=ribo, y=shifts, z=lengths, w=experiments), mc.cores=1)

@@ -248,4 +248,3 @@ get_pause_sites=function(ribo, transcripts, p_shift, experiments, cores){
   }, x = transcripts, MoreArgs=list(a=ribo, y=shifts, z=lengths, w=experiments), mc.cores=cores)
   return(sites)
 }
-s

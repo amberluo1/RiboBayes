@@ -2,27 +2,25 @@
 % Please edit documentation in R/Pause Site Detection.R
 \name{get_pause_sites}
 \alias{get_pause_sites}
-\title{Get a list of all pause sites on inputted transcripts with differential expression scoring
-from a .ribo object}
+\title{Create a RiboBayes object from a Ribo object}
 \usage{
-get_pause_sites(ribo, transcript, shifts, lengths, experiments)
+get_pause_sites(ribo, transcripts, p_shift, experiments, cores)
 }
 \arguments{
-\item{ribo}{.ribo file}
+\item{ribo}{Ribo object}
 
-\item{transcript}{List of transcripts to find pause sites on}
+\item{transcripts}{Character vector of transcript names to detect pause sites on.}
 
-\item{shifts}{List of P-site shifts (may phase this out)}
+\item{p_shift}{if \code{FALSE}, P-site adjustments are not applied. Defaults to \code{TRUE}.}
 
-\item{lengths}{List of read lengths to use in pause site detection}
+\item{experiments}{Character vector of ribosome profiling experiments to draw data from.}
 
-\item{experiments}{List of ribosome profiling experiment names in the .ribo object to draw data from}
+\item{cores}{Number of cores to run \code{get_pause_sites()} on.}
 }
 \value{
-A RiboBayes object
+A RiboBayes object containing []
 }
 \description{
-This function takes as input a .ribo object (and other optional parameters that can be specified)
-and returns a RiboBayes object containing information on the location and differential expression data
-of all ribosome pause sites on the inputted transcripts.
+Takes as input a Ribo object and returns a RiboBayes object containing information on the
+location and differential expression data of all ribosome pause sites on the inputted transcripts.
 }

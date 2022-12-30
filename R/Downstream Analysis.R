@@ -1,5 +1,3 @@
-library(ggvenn)
-library(UpSetR)
 removezeros=function(sites){
   zeropos=c()
   m=1
@@ -35,7 +33,7 @@ get_ps_change=function(sites, bayes.adjust){
   return(data)
 }
 
-#' Load a Matrix
+#'
 #'
 #' This function loads a file as a matrix. It assumes that the first column
 #' contains the rownames and the subsequent columns are the sample identifiers.
@@ -44,7 +42,7 @@ get_ps_change=function(sites, bayes.adjust){
 #'
 #' @param infile Path to the input file
 #' @return A matrix of the infile
-#' @exportplot
+#' @export
 plot_ps_conservation=function(sites){
   sites=removezeros(sites)
   data=data.frame()

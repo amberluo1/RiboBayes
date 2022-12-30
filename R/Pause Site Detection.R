@@ -74,6 +74,54 @@ differentialpeaks=function(set){
   newlist=list(set, significant)
   return(newlist)
 }
+bayesian_p_adjust=function(sites, graph){
+  if(missing(graph)){
+    graph=FALSE
+  }
+  numexperiments=(ncol(sites[[1]][[2]])-3)/2
+  exptype=c()
+  vector=c("CTR", "EXP")
+  for(i in 1:2){
+    for(j in 1:numexperiments){
+      exptype=c(exptype, vector[i])
+    }
+  }
+  exptype <- factor(exptype)
+  counts=get_ps_info(sites)
+  counts=counts%>%dplyr::select(-position, -transcript)
+  for(i in 2:ncol(counts)){
+    counts=counts[counts[,i]>=0,]
+  }
+  identifiers=counts$identifier
+  counts2=get_ps_info(sites)
+  counts2=counts2%>%filter(!(identifier%in%(identifiers)))%>%dplyr::select(-position, -transcript)
+  counts2[counts2 < 0] <- 0
+  counts=rbind(counts, counts2)
+  y <- DGEList(counts=counts[,-1],group=exptype, genes = counts[,1])
+  y <- calcNormFactors(y, method = "TMM")
+
+  design <- model.matrix(~0 + exptype)
+  colnames(design) <- levels(exptype)
+  y <- estimateDisp(y,design)
+  if(graph==TRUE){
+    plotBCV(y)
+    plotMDS(y)
+  }
+  fit <- glmQLFit(y,design)
+  my.contrasts <- makeContrasts(
+    PS_CHANGE = EXP-CTR,
+    levels = design
+  )
+  qlfChange <- glmQLFTest(fit, contrast=my.contrasts[,"PS_CHANGE"])
+  qlfChange=as.data.frame(qlfChange)
+  qlfChange=qlfChange%>%rename(identifier=genes, p=PValue)%>%dplyr::select(identifier, p, logFC)%>%
+    mutate(position=as.numeric(sub(" .*", "", identifier)), transcript=sub(".* ", "", identifier))
+  if(length(get_experiments(ribo)>6)){
+    qlfChange=qlfChange[,c(1, 4, 5, 2, 3)]%>%rename(statistic=logFC)%>%mutate(statistic=-statistic)
+  }
+  return(qlfChange)
+}
+
 adjustscore=function(zcov){
   zcov=zcov%>%arrange(position)
   max=max(zcov$position)
@@ -149,33 +197,7 @@ wavelettransform=function(cov){
   }
   return(list(zcov, zcov_filtered, originalset, kappaset))
 }
-wavelettransform2=function(cov){
-  cov=cov%>%mutate(position=as.numeric(position))
-  cov=cov%>%group_by(experiment)%>%mutate(counts=count/mean(count))
-  cov=wavetransform(cov)
-  zcov=adjustscore(cov)
-  zcov_filtered=zcov%>%filter(score>6 & is.finite(score))
-  if(nrow(zcov_filtered)==0){
-    return(0)
-  }
-  zcov_filtered=removepeaks(zcov_filtered, 3)
-  if(nrow(zcov_filtered)==0){
-    return(0)
-  }
-  sets=makeset2(zcov, zcov_filtered)
-  if(is.double(sets)){
-    return(0)
-  }
-  set=sets[[1]]
-  originalset=sets[[2]]
-  if(is.double(set)){
-    kappaset=0
-  }else{
-    kappaset=makekappaset2(set)
-  }
-  return(list(zcov, zcov_filtered, originalset, kappaset))
-}
-get_pause_sites_h=function(ribo, transcript, p_shift, shifts, lengths, experiments, cores){
+get_pause_sites_h=function(ribo, transcript, shifts, lengths, experiments, cores){
   if(missing(experiments)){
     experiments=get_experiments(ribo)
   }
@@ -214,14 +236,14 @@ get_pause_sites_h=function(ribo, transcript, p_shift, shifts, lengths, experimen
 
 #' Create a RiboBayes object from a Ribo object
 #'
-#' Takes as input a .ribo object and returns a RiboBayes object containing information on the
+#' Takes as input a Ribo object and returns a RiboBayes object containing information on the
 #' location and differential expression data of all ribosome pause sites on the inputted transcripts.
 #'
 #' @param ribo Ribo object
-#' @param transcripts Character vector of transcript names to detect pause sites on.
-#' @param p_shift if FALSE, P-site adjustments are not applied. Defaults to TRUE.
-#' @param experiments Character vector of ribosome profiling experiments to draw data from.
-#' @param cores Number of cores to run get_pause_sites() on.
+#' @param transcripts Character vector of transcript names.
+#' @param p_shift if `FALSE`, P-site adjustments are not applied. Defaults to `TRUE`.
+#' @param experiments Character vector of ribosome profiling experiments.
+#' @param cores Number of cores to run `get_pause_sites()` on.
 #' @return A RiboBayes object containing []
 #' @export
 get_pause_sites=function(ribo, transcripts, p_shift, experiments, cores){

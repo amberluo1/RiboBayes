@@ -117,7 +117,7 @@ bayesian_p_adjust=function(sites, graph){
   qlfChange=qlfChange%>%rename(identifier=genes, p=PValue)%>%dplyr::select(identifier, p, logFC)%>%
     mutate(position=as.numeric(sub(" .*", "", identifier)), transcript=sub(".* ", "", identifier))
   if(length(get_experiments(ribo)>6)){
-    qlfChange=qlfChange[,c(1, 4, 5, 2, 3)]%>%rename(statistic=logFC)%>%mutate(statistic=-statistic)
+    qlfChange=qlfChange[,c(1, 4, 5, 3, 2)]%>%rename(statistic=logFC)%>%mutate(statistic=-statistic)
   }
   return(qlfChange)
 }
@@ -234,17 +234,20 @@ get_pause_sites_h=function(ribo, transcript, shifts, lengths, experiments, cores
   return(list(allpeaks, originalset, binary, c(numpeaks, diffpeaks,length)))
 }
 
-#' Create a RiboBayes object from a Ribo object
+#' Get a list of pause sites on each transcript
 #'
-#' Takes as input a Ribo object and returns a RiboBayes object containing information on the
-#' location and differential expression data of all ribosome pause sites on the inputted transcripts.
+#' Takes as input a Ribo object and returns a list containing information on pause site location
+#' and expression for all transcripts inputted to the function.
 #'
 #' @param ribo Ribo object
 #' @param transcripts Character vector of transcript names.
 #' @param p_shift if `FALSE`, P-site adjustments are not applied. Defaults to `TRUE`.
 #' @param experiments Character vector of ribosome profiling experiments.
 #' @param cores Number of cores to run `get_pause_sites()` on.
-#' @return A RiboBayes object containing []
+#' @return A list with one slot for each transcript. Each slot
+#' contains: 1) a data frame with the location and statistic of change for each pause site on the transcript,
+#' 2) a data frame with the expression of the pause site in each experiment, and 3) a data frame recording whether or not
+#' the pause site was called a peak in each condition (1 if peak, 0 if not).
 #' @export
 get_pause_sites=function(ribo, transcripts, p_shift, experiments, cores){
   if(missing(experiments)){

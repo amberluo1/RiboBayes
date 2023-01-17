@@ -2,25 +2,28 @@
 % Please edit documentation in R/Pause Site Detection.R
 \name{get_pause_sites}
 \alias{get_pause_sites}
-\title{Create a RiboBayes object from a Ribo object}
+\title{Get a list of pause sites on each transcript}
 \usage{
 get_pause_sites(ribo, transcripts, p_shift, experiments, cores)
 }
 \arguments{
 \item{ribo}{Ribo object}
 
-\item{transcripts}{Character vector of transcript names to detect pause sites on.}
+\item{transcripts}{Character vector of transcript names.}
 
 \item{p_shift}{if \code{FALSE}, P-site adjustments are not applied. Defaults to \code{TRUE}.}
 
-\item{experiments}{Character vector of ribosome profiling experiments to draw data from.}
+\item{experiments}{Character vector of ribosome profiling experiments.}
 
 \item{cores}{Number of cores to run \code{get_pause_sites()} on.}
 }
 \value{
-A RiboBayes object containing []
+A list with one slot for each transcript. Each slot
+contains: 1) a data frame with the location and statistic of change for each pause site on the transcript,
+2) a data frame with the expression of the pause site in each experiment, and 3) a data frame recording whether or not
+the pause site was called a peak in each condition (1 if peak, 0 if not).
 }
 \description{
-Takes as input a Ribo object and returns a RiboBayes object containing information on the
-location and differential expression data of all ribosome pause sites on the inputted transcripts.
+Takes as input a Ribo object and returns a list containing information on pause site location
+and expression for all transcripts inputted to the function.
 }

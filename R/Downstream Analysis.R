@@ -21,27 +21,25 @@ get_ps_info=function(sites){
   }
   return(data)
 }
-get_ps_change=function(sites, bayes.adjust){
-  if(missing(bayes.adjust)){
-    bayes.adjust=FALSE
-  }
+get_ps_change=function(sites){
   sites=removezeros(sites)
-  data=data.frame()
-  for(i in 1:length(sites)){
-    data=rbind(data, sites[[i]][[1]])
-  }
+  # data=data.frame()
+  # for(i in 1:length(sites)){
+  #   data=rbind(data, sites[[i]][[1]])
+  # }
+  data=bayesian.p.adjust(sites)
   return(data)
 }
 
+#' Create Venn Diagrams to visualize the conservation of pause sites across experiments
 #'
+#' Takes as input a list of ribosome pause sites (the output of `get_pause_sites()`) and plots
+#' Venn diagrams depicting the overlap of detected pause sites across experiments.
 #'
-#' This function loads a file as a matrix. It assumes that the first column
-#' contains the rownames and the subsequent columns are the sample identifiers.
-#' Any rows with duplicated row names will be dropped with the first one being
-#' kepted.
-#'
-#' @param infile Path to the input file
-#' @return A matrix of the infile
+#' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @return One figure with two Venn diagrams (one for each condition) depicting the overlap of pause site
+#' expression across experiments. One UpSetR graph providing more detailed information about the expression
+#' of pause sites across replicates and experiments.
 #' @export
 plot_ps_conservation=function(sites){
   sites=removezeros(sites)
@@ -96,12 +94,20 @@ plot_ps_conservation=function(sites){
   print(upset(data, nsets = 6, nintersects = NA, mb.ratio = c(0.5, 0.5),keep.order=TRUE,sets=colnames(data)[4:9],
               order.by = "freq", decreasing = c(TRUE,FALSE)))
 }
+
+#' Plot violin plots to visualize the distribution of t-statistics for pause site significance.
+#'
+#' Takes as input a list of ribosome pause sites (the output of `get_pause_sites()`) and plots
+#' two violin plots showing the distribution of t-statistics for constant and differential pause sites.
+#'
+#' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @return A `ggstatsplot` figure with two violin plots: one showing the distribution of pause site
+#' t-statistics for constant pause sites only ($$p>0.05$$) and one showing the distribution of pause
+#' site t-statistics fo differential pause sites only ($$p<=0.05$$).
+#' @export
 plot_ps_regulation=function(sites){
   sites=removezeros(sites)
-  data=data.frame()
-  for(i in 1:length(sites)){
-    data=rbind(data, sites[[i]][[1]])
-  }
+  data=bayesian_p_adjust(sites)
   data=data%>%mutate("Pause Site Expression"=ifelse(p<0.05, "Differential", "Constant"), statistic=statistic * -1)
   print(ggstatsplot::ggbetweenstats(
     data = data,
@@ -114,15 +120,23 @@ plot_ps_regulation=function(sites){
   )
   )
 }
+
+#' Create Venn Diagrams to visualize the conservation of pause sites across experiments
+#'
+#' Takes as input a list of ribosome pause sites (the output of `get_pause_sites()`) and plots
+#' Venn diagrams depicting the overlap of detected pause sites across experiments.
+#'
+#' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @return One figure with two Venn diagrams (one for each condition) depicting the overlap of pause site
+#' expression across experiments. One UpSetR graph providing more detailed information about the expression
+#' of pause sites across replicates and experiments.
+#' @export
 plot_ps_distribution=function(ribo, sites){
   sites=removezeros(sites)
   rc=get_internal_region_coordinates(ribo, alias=TRUE)
   lengths=get_internal_region_lengths(ribo, alias=TRUE)
   rc=rc%>%left_join(lengths)%>%mutate(startcodon=CDS_start-10, length=CDS)%>%select(transcript, startcodon, length)
-  data=data.frame()
-  for(i in 1:length(sites)){
-    data=rbind(data, sites[[i]][[1]])
-  }
+  data=bayesian_p_adjust(sites)
   data=data%>%left_join(rc)
   data=data%>%mutate(relativepos=(position-startcodon)/length, distance=position-startcodon)%>%filter(distance>0 & relativepos<1)
   data=data%>%mutate(sig=ifelse(p<0.05, "Differential", "Constant"))

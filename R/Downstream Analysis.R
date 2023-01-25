@@ -13,6 +13,17 @@ removezeros=function(sites){
   }
   return(sites)
 }
+
+#' Create a data frame summarizing the output of `get_pause_sites()`
+#'
+#' Takes as input a list of ribosome pause sites (the output of `get_pause_sites()`) and returns a
+#' data frame with one row for each pause site, with columns containing an unique identifier, transcript location,
+#' nucleotide position, and significance score in all replicates for each pause site.
+#'
+#' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @return Data frame with one row for each pause site and columns containing a unique identifier,
+#' transcript location, nucleotide position, and significance score in all replicates for each pause site.
+#' @export
 get_ps_info=function(sites){
   sites=removezeros(sites)
   data=data.frame()
@@ -21,13 +32,27 @@ get_ps_info=function(sites){
   }
   return(data)
 }
+
+#' Create a data frame with the probability of differential expression for each pause site
+#'
+#' Takes as input a list of ribosome pause sites (the output of `get_pause_sites()`) and returns a
+#' data frame with one row for each pause site and columns containing information about pause site location
+#' and differential expression (p-value, logFC).
+#'
+#' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @return Data frame with one row for each pause site and columns containing a unique identifier,
+#' transcript location, nucleotide position, log fold change (logFC), and p-value of change across conditions for each pause site.
+#' @details The function \code{\link{get_ps_change}} calls edgeR's methods to quantify change across conditions
+#' with a limited number of samples, producing a log fold-change (logFC) and p-value. You can read more about these methods
+#' \href{https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf}{here}.
+#' @export
 get_ps_change=function(sites){
   sites=removezeros(sites)
   # data=data.frame()
   # for(i in 1:length(sites)){
   #   data=rbind(data, sites[[i]][[1]])
   # }
-  data=bayesian.p.adjust(sites)
+  data=bayesian_p_adjust(sites)
   return(data)
 }
 
@@ -102,8 +127,8 @@ plot_ps_conservation=function(sites){
 #'
 #' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
 #' @return A `ggstatsplot` figure with two violin plots: one showing the distribution of pause site
-#' t-statistics for constant pause sites only ($$p>0.05$$) and one showing the distribution of pause
-#' site t-statistics fo differential pause sites only ($$p<=0.05$$).
+#' t-statistics for constant pause sites only (p>0.05) and one showing the distribution of pause
+#' site t-statistics of differential pause sites only (p<=0.05).
 #' @export
 plot_ps_regulation=function(sites){
   sites=removezeros(sites)
@@ -146,10 +171,18 @@ plot_ps_distribution=function(ribo, sites){
   b=sigdata%>%ggplot(mapping=aes(x=relativepos, fill=regulation))+geom_density(alpha=0.4)
   print(a+b)
 }
-plot_ps_by_transcript=function(experiment_name, sites){
-  if(missing(experiment_name)){
-    experiment_name="ribo"
-  }
+
+#' Plot bar plots to visualize the distribution of differential pause sites per transcript
+#'
+#' Takes as input a list of ribosome pause sites (the output of `get_pause_sites()`) and plots
+#' two bar plots: one showing the distribution of the number of differential pause sites per transcript,
+#' and another showing the distribution of the number of upregulated vs. downregulated pause sites per
+#' transcript.
+#'
+#' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @return `NULL`
+#' @export
+plot_dps_per_transcript=function(sites){
   sites=removezeros(sites)
   length=length(sites)
   numpauses=data.frame("transcript"=names(sites), "ps"=1:length, "dps"=1:length, "length"=1:length)
@@ -171,36 +204,38 @@ plot_ps_by_transcript=function(experiment_name, sites){
   numpauses[4]=length
   numpauses=numpauses%>%mutate(ribo=experiment_name)
 
-  print(ggstatsplot::ggbetweenstats(
-    data = numpauses,
-    x = ribo,
-    y = ps,
-    outlier.tagging = TRUE, outlier.coef=2.0,
-    outlier.label = transcript,
-    title = "Number of Pause Sites by Transcript",
-    xlab = experiment_name,
-    ylab = "Number of Constant & Differential Pause Sites"
-  ))
   dps_t=table(dps)
   par(mfrow=c(1,2))
-  bp1=barplot(dps_t, col=c("lightblue"), main="Number of Differential Pause Sites per Transcript", xlab="Number of Differential Pause Sites", ylab="Number of Transcripts")
+  bp1=barplot(dps_t, col=c("gray"), main="Number of Differential Pause Sites per Transcript", xlab="Number of Differential Pause Sites", ylab="Number of Transcripts")
   text(bp1,0, round(dps_t, 1),cex=0.9,pos=3)
-  data=data.frame()
-  for(i in 1:length(sites)){
-    data=rbind(data, sites[[i]][[1]])
-  }
+  data=get_ps_change(sites)
+
+  # extract upregulated and downregulated pause sites
+  # tally up number of differential pause sites by transcript
+
   updata=data%>%filter(p<0.05 & statistic<0)
-  up=plyr::count(updata, "transcript")
-  up=up%>%dplyr::rename(up=freq)
+  up=plyr::count(updata, "transcript")%>%dplyr::rename(up=freq)
+
   downdata=data%>%filter(p<0.05 & statistic>0)
-  down=plyr::count(downdata, "transcript")
-  down=down%>%dplyr::rename(down=freq)
-  zerodata=data.frame("transcript"=names(sites), "up"=rep(0, length(sites)), "down"=rep(0, length(sites)))
-  zerodata=zerodata%>%rows_update(up)
-  zerodata=zerodata%>%rows_update(down)
-  Upregulated=table(zerodata$up)
-  Downregulated=table(zerodata$down)
+  down=plyr::count(downdata, "transcript")%>%dplyr::rename(down=freq)
+
+  # create data frame with all transcripts, regardless of whether they have DPS or not
+
+  all_transcripts=data.frame("transcript"=names(sites), "up"=rep(0, length(sites)), "down"=rep(0, length(sites)))
+  all_transcripts=all_transcripts%>%rows_update(up)
+  all_transcripts=all_transcripts%>%rows_update(down)
+
+  # get tables to create bar plots with
+
+  Upregulated=table(all_transcripts$up)
+  Downregulated=table(all_transcripts$down)
+
+
   full=rbind(Upregulated, Downregulated)
+
+  # if Upregulated and Downregulated tables are not the same length, one must be extended to be the
+  # same length as the other otherwise graphing doesn't work
+
   if(length(Upregulated)!=length(Downregulated)){
     if(length(Upregulated)<length(Downregulated)){
       diff=length(Downregulated)-length(Upregulated)
@@ -209,10 +244,41 @@ plot_ps_by_transcript=function(experiment_name, sites){
       }
     }
   }
-  y=full[1:length(full)]
-  max=max(y)
+
+  # get largest bin from both upregulated & downregulated tables
+
+  max=max(full)
+
   bp2=barplot(full, col=c("lightblue", "pink"), beside=TRUE,
               main="Upregulated & Downregulated Pause Sites by Transcript", xlab="Differential Pause Sites by Expression Change", ylab="Number of Transcripts", legend=c("Upregulated", "Downregulated"),
               args.legend=list(title="Pause Sites", pt.cex=1.3,cex=0.7,"topright", text.font=3),ylim=c(0,ceiling(max/100)*100))
+  y=full[1:length(full)]
+
+  # add labels for number of pause sites in each bin
+
   text(bp2,y+7,labels=as.character(y), cex=0.8)
 }
+
+#' Create bar plots to visualize the distribution of pause sites per transcript
+#'
+#' Takes as input a list of ribosome pause sites (the output of `get_pause_sites()`) and plots
+#' a bar plot showing the distribution of pause sites, both constant and differential, per transcript.
+#'
+#' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @return `NULL`
+#' @export
+plot_ps_by_transcript=function(sites){
+  sites=removezeros(sites)
+  length=length(sites)
+
+  ps=mcmapply(function(i){
+    return(sites[[i]][[4]][[1]])
+  }, i=1:length(sites), mc.cores=3)
+
+  par(mfrow=c(1, 1))
+  bp1=barplot(table(ps), col=c("gray"), main="Number of Differential Pause Sites per Transcript", xlab="Number of Differential Pause Sites", ylab="Number of Transcripts")
+  text(bp1,0, table(ps),cex=0.9,pos=3)
+}
+
+#implement amino acid analysis
+

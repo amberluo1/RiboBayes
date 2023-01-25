@@ -11,8 +11,8 @@ plot_ps_regulation(sites)
 }
 \value{
 A \code{ggstatsplot} figure with two violin plots: one showing the distribution of pause site
-t-statistics for constant pause sites only ($$p>0.05$$) and one showing the distribution of pause
-site t-statistics fo differential pause sites only ($$p<=0.05$$).
+t-statistics for constant pause sites only (p>0.05) and one showing the distribution of pause
+site t-statistics of differential pause sites only (p<=0.05).
 }
 \description{
 Takes as input a list of ribosome pause sites (the output of \code{get_pause_sites()}) and plots

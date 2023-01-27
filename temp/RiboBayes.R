@@ -724,7 +724,8 @@ bayesian_p_adjust=function(sites, graph){
       qlfChange=qlfChange[,c(1, 4, 5, 2, 3)]%>%rename(statistic=logFC)%>%mutate(statistic=-statistic)
     }
     return(qlfChange)
-  }
+}
+
 #temporary function for bad bad situations :(
 listtransform=function(bad){
   length=length(bad)/3

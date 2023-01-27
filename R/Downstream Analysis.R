@@ -267,7 +267,7 @@ plot_dps_per_transcript=function(sites){
 #' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
 #' @return `NULL`
 #' @export
-plot_ps_by_transcript=function(sites){
+plot_ps_per_transcript=function(sites){
   sites=removezeros(sites)
   length=length(sites)
 

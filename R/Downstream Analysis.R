@@ -40,19 +40,28 @@ get_ps_info=function(sites){
 #' and differential expression (p-value, logFC).
 #'
 #' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @param bayesian_adjust If `TRUE`, shares variance across pause sites using techniques from the edgeR package to determine significance.
+#' If `FALSE`, uses a simple two-sample t-test to determine significance. Defaults to `TRUE`.
 #' @return Data frame with one row for each pause site and columns containing a unique identifier,
-#' transcript location, nucleotide position, log fold change (logFC), and p-value of change across conditions for each pause site.
+#' transcript location, nucleotide position, statistic of change, and p-value of change across conditions for each pause site.
+
 #' @details The function \code{\link{get_ps_change}} calls edgeR's methods to quantify change across conditions
 #' with a limited number of samples, producing a log fold-change (logFC) and p-value. You can read more about these methods
 #' \href{https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf}{here}.
+#' #' If `bayesian_adjust==TRUE`, the statistic of change is the log fold-change; else, the statistic of change is the
+#' t-statistic from a two-sample t-test.
 #' @export
-get_ps_change=function(sites){
+get_ps_change=function(sites, bayesian_adjust=TRUE){
   sites=removezeros(sites)
-  # data=data.frame()
-  # for(i in 1:length(sites)){
-  #   data=rbind(data, sites[[i]][[1]])
-  # }
-  data=bayesian_p_adjust(sites)
+  if(!bayesian_adjust){
+    data=data.frame()
+    for(i in 1:length(sites)){
+      data=rbind(data, sites[[i]][[1]])
+    }
+  }
+  else{
+    data=bayesian_p_adjust(sites)
+  }
   return(data)
 }
 
@@ -62,6 +71,8 @@ get_ps_change=function(sites){
 #' Venn diagrams depicting the overlap of detected pause sites across experiments.
 #'
 #' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @param bayesian_adjust If `TRUE`, shares variance across pause sites using techniques from the edgeR package to determine significance.
+#' If `FALSE`, uses a simple two-sample t-test to determine significance. Defaults to `TRUE`.
 #' @return One figure with two Venn diagrams (one for each condition) depicting the overlap of pause site
 #' expression across experiments. One UpSetR graph providing more detailed information about the expression
 #' of pause sites across replicates and experiments.
@@ -126,13 +137,14 @@ plot_ps_conservation=function(sites){
 #' two violin plots showing the distribution of t-statistics for constant and differential pause sites.
 #'
 #' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @param bayesian_adjust If `TRUE`, shares variance across pause sites using techniques from the edgeR package to determine significance.
+#' If `FALSE`, uses a simple two-sample t-test to determine significance. Defaults to `TRUE`.
 #' @return A `ggstatsplot` figure with two violin plots: one showing the distribution of pause site
 #' t-statistics for constant pause sites only (p>0.05) and one showing the distribution of pause
 #' site t-statistics of differential pause sites only (p<=0.05).
 #' @export
-plot_ps_regulation=function(sites){
-  sites=removezeros(sites)
-  data=bayesian_p_adjust(sites)
+plot_ps_regulation=function(sites, bayesian_adjust=TRUE){
+  data=get_ps_change(sites, bayesian_adjust)
   data=data%>%mutate("Pause Site Expression"=ifelse(p<0.05, "Differential", "Constant"), statistic=statistic * -1)
   print(ggstatsplot::ggbetweenstats(
     data = data,
@@ -140,10 +152,30 @@ plot_ps_regulation=function(sites){
     y = statistic,
     outlier.tagging = TRUE, outlier.coef=2.0,
     outlier.label = transcript,
-    title = "Distribution of Pause Sites in 350 Highly Expressed Transcripts from eIF5A ovx and PKM KD Cells",
-    ylab = "t-statistic of Pause Site Expression Change in eIF5A ovx vs. control "
+    title = "Distribution of t-statistics for Upregulated, Downregulated, and Constant Pause Sites",
+    ylab = "t-statistic of Pause Site Expression Change"
   )
   )
+}
+
+#' Plot a volcano plot of -log(p) vs. log fold change for all pause sites.
+#'
+#' Takes as input a list of ribosome pause sites (the output of `get_pause_sites()`) and
+#' plots a volcano plot showing the log fold change vs. -log(p-value) of change across conditions
+#' for all detected ribosome pause sites. Labels the most significant pause sites (those with highest
+#' log fold change and/or most significance p-value).
+#'
+#' @param sites List of ribosome pause sites; usually the output of `get_pause_sites()`
+#' @param bayesian_adjust If `TRUE`, shares variance across pause sites using techniques from the edgeR package to determine significance.
+#' If `FALSE`, uses a simple two-sample t-test to determine significance. Defaults to `TRUE`.
+#' @return Returns `NULL`.
+#' @export
+plot_ps_volcano=function(sites, bayesian_adjust=TRUE){
+  sites=removezeros(sites)
+  data=get_ps_change(sites, bayesian_adjust)
+  data=data%>%mutate(Significance=ifelse(p<0.05, "Significant", "Not Significant"))%>%mutate(label=ifelse(p<0.001, transcript,""))
+  data%>%ggplot(mapping=aes(x=statistic, y=-log(p), color=Significance, label=label))+geom_point()+geom_text_repel()+xlab("logFC")+
+    scale_color_manual(values=c("#808080", "#dd0000"))
 }
 
 #' Create Venn Diagrams to visualize the conservation of pause sites across experiments
@@ -156,19 +188,18 @@ plot_ps_regulation=function(sites){
 #' expression across experiments. One UpSetR graph providing more detailed information about the expression
 #' of pause sites across replicates and experiments.
 #' @export
-plot_ps_distribution=function(ribo, sites){
-  sites=removezeros(sites)
+plot_ps_distribution=function(ribo, sites, bayesian_adjust=TRUE){
+  data=get_ps_change(sites, bayesian_adjust)
   rc=get_internal_region_coordinates(ribo, alias=TRUE)
   lengths=get_internal_region_lengths(ribo, alias=TRUE)
   rc=rc%>%left_join(lengths)%>%mutate(startcodon=CDS_start-10, length=CDS)%>%select(transcript, startcodon, length)
-  data=bayesian_p_adjust(sites)
   data=data%>%left_join(rc)
   data=data%>%mutate(relativepos=(position-startcodon)/length, distance=position-startcodon)%>%filter(distance>0 & relativepos<1)
-  data=data%>%mutate(sig=ifelse(p<0.05, "Differential", "Constant"))
+  data=data%>%mutate(Significance=ifelse(p<0.05, "Differential", "Constant"))
   sigdata=data%>%filter(p<0.05)
-  a=data%>%ggplot(mapping=aes(x=relativepos, fill=sig))+geom_density(alpha=0.4)
-  sigdata=sigdata%>%mutate(regulation=ifelse(statistic>0, "Downregulated", "Upregulated"))
-  b=sigdata%>%ggplot(mapping=aes(x=relativepos, fill=regulation))+geom_density(alpha=0.4)
+  a=data%>%ggplot(mapping=aes(x=relativepos, fill=Significance))+geom_density(alpha=0.4)+xlab("Relative Position")+ylab("Density")
+  sigdata=sigdata%>%mutate(Direction=ifelse(statistic>0, "Downregulated", "Upregulated"))
+  b=sigdata%>%ggplot(mapping=aes(x=relativepos, fill=Direction))+geom_density(alpha=0.4)+xlab("Relative Position")+ylab("Density")
   print(a+b)
 }
 

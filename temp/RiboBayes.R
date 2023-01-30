@@ -740,11 +740,12 @@ listtransform=function(bad){
 }
 
 ##################################################
-ribo=pkm.ribo
+ribo=all.ribo
 lengths=get_read_lengths(ribo)
 lengths=as.numeric(lengths)
 experiments=get_experiments(ribo)
 shifts=get_pshifts(ribo, lengths, graph=FALSE)
+
 
 rc_CDS <- get_region_counts(ribo.object    = ribo,
                             range.lower = lengths[[1]],
@@ -755,15 +756,19 @@ rc_CDS <- get_region_counts(ribo.object    = ribo,
                             normalize=TRUE,
                             region     = "CDS",
                             compact    = FALSE)
-region_lengths <- get_internal_region_lengths(ribo.object = ribo, alias = TRUE)
+region_lengths <- get_internal_region_lengths(ribo.object = ribo, alias=TRUE)
 cds=region_lengths%>%dplyr::select(transcript, CDS)
 rc_CDS=rc_CDS%>%left_join(cds)%>%mutate(count=count/CDS)
 
 rc_CDS_w = dcast(rc_CDS[,-5], transcript ~ experiment)
-high_exp = rowSums( cpm(rc_CDS_w[,-1]) > 369) > 1
-sum(high_exp)
+rc_CDS_w=rc_CDS_w%>%mutate(summed=rowSums( cpm(rc_CDS_w[,-1])))
+rc_CDS_w=rc_CDS_w%>%arrange(-summed)
+high_transcripts=rc_CDS_w[1:500,]$transcript
 
-transcripts=rc_CDS_w$transcript[high_exp]
+# high_exp = rowSums( cpm(rc_CDS_w[,-1]) > 369) > 1
+# sum(high_exp)
+#
+# transcripts=rc_CDS_w$transcript[high_exp]
 
 test=mcmapply(function(a,x,y, z, w){
   return(get_pause_sites_h(a,x,y,z,w))

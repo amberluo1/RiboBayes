@@ -4,7 +4,7 @@
 \alias{plot_ps_distribution}
 \title{Create Venn Diagrams to visualize the conservation of pause sites across experiments}
 \usage{
-plot_ps_distribution(ribo, sites)
+plot_ps_distribution(ribo, sites, bayesian_adjust = TRUE)
 }
 \arguments{
 \item{sites}{List of ribosome pause sites; usually the output of \code{get_pause_sites()}}

@@ -8,6 +8,9 @@ plot_ps_conservation(sites)
 }
 \arguments{
 \item{sites}{List of ribosome pause sites; usually the output of \code{get_pause_sites()}}
+
+\item{bayesian_adjust}{If \code{TRUE}, shares variance across pause sites using techniques from the edgeR package to determine significance.
+If \code{FALSE}, uses a simple two-sample t-test to determine significance. Defaults to \code{TRUE}.}
 }
 \value{
 One figure with two Venn diagrams (one for each condition) depicting the overlap of pause site

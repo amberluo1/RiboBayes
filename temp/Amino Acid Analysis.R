@@ -1,9 +1,40 @@
+fastaFile=readDNAStringSet("/Users/amberluo/Downloads/gencode.v29.transcripts (1).fa.gz")
+View(fastaFile)
+seq_name = names(fastaFile)
+seq_name
+sequence = paste(fastaFile)
+df <- data.frame(seq_name, sequence)
+
+mmrn=get_reference_names(mm.ribo)
+mmrn=mmrn%>%left_join(df)
+mmrn=as.data.frame(mmrn)
+mmrn=mmrn%>%left_join(df)
+df=df%>%rename(transcript=seq_name)
+transcript
+df=df%>%dplyr::rename(transcript=seq_name)
+mmrn=mmrn%>%left_join(df)
+View(mmrn)
+mmrn=mmrn%>%rename(transcript=mmrn)%>%left_join(df)
+mmrn=mmrn%>%dplyr::rename(transcript=mmrn)%>%left_join(df)
+mmtrans=mmrn$transcript
+
+mmalias=get_internal_region_coordinates(mm.ribo, alias=TRUE)$transcript
+mmalias=as.data.frame(mmalias)
+mmrn=cbind(mmrn, mmalias)
+mmrn=mmrn%>%select(-sequence)
 mmalias=mmrn$mmalias
+mmdf=df%>%filter(grepl(mmalias, transcript))
+View(mmdf)
+mmdf=df%>%filter(grepl("a", transcript))
+mmdf=df%>%filter(grepl("E", transcript))
+mmdf=df%>%filter(grepl("GAPDH-205", transcript))
+
 mmsequences=data.frame()
 for(i in 1:length(mmalias)){
   print(i)
   mmsequences=rbind(mmsequences, df%>%filter(grepl(mmalias[i], transcript)))
 }
+
 for(i in 1:nrow(eif5a)){
   mod=eif5a[[i,26]]
   if(mod==0){
@@ -14,6 +45,7 @@ for(i in 1:nrow(eif5a)){
     eif5a[[i,33]]=substr(eif5a[[i, 19]], floor(eif5a[[i,2]]/3)*3-31, floor(eif5a[[i,2]]/3)*3-29)
   }
 }
+
 for(i in 1:nrow(eif5a)){
   eif5a[[i,31]]=as.character(translate(DNAString(eif5a[[i,33]])))
                              }
@@ -119,7 +151,7 @@ pheatmap(ahm2, color=redgreen(75), breaks = seq(-4.5, 4.5, length.out = 76),cexR
 heatmap.2(codonheatmap, Rowv=FALSE, Colv = FALSE, col=bluered(75), cexRow=0.6,breaks = seq(-4, 4, length.out = 100),
           cexCol=1.25, trace="none", density.info="none", key=FALSE, margins=c(4,3))
 
-dumbbell(v1 = aa2usage$expected, v2 = aa2usage$actual, 
+dumbbell(v1 = aa2usage$expected, v2 = aa2usage$actual,
          text = TRUE, labels = aa2usage$aa2, segments = TRUE,
          pch = 19, pt.cex = 1.5, colv1 = "red", colv2="green")
 

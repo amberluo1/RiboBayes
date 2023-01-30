@@ -4,10 +4,13 @@
 \alias{plot_ps_regulation}
 \title{Plot violin plots to visualize the distribution of t-statistics for pause site significance.}
 \usage{
-plot_ps_regulation(sites)
+plot_ps_regulation(sites, bayesian_adjust = TRUE)
 }
 \arguments{
 \item{sites}{List of ribosome pause sites; usually the output of \code{get_pause_sites()}}
+
+\item{bayesian_adjust}{If \code{TRUE}, shares variance across pause sites using techniques from the edgeR package to determine significance.
+If \code{FALSE}, uses a simple two-sample t-test to determine significance. Defaults to \code{TRUE}.}
 }
 \value{
 A \code{ggstatsplot} figure with two violin plots: one showing the distribution of pause site

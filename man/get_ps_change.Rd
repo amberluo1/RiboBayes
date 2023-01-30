@@ -4,14 +4,17 @@
 \alias{get_ps_change}
 \title{Create a data frame with the probability of differential expression for each pause site}
 \usage{
-get_ps_change(sites)
+get_ps_change(sites, bayesian_adjust = TRUE)
 }
 \arguments{
 \item{sites}{List of ribosome pause sites; usually the output of \code{get_pause_sites()}}
+
+\item{bayesian_adjust}{If \code{TRUE}, shares variance across pause sites using techniques from the edgeR package to determine significance.
+If \code{FALSE}, uses a simple two-sample t-test to determine significance. Defaults to \code{TRUE}.}
 }
 \value{
 Data frame with one row for each pause site and columns containing a unique identifier,
-transcript location, nucleotide position, log fold change (logFC), and p-value of change across conditions for each pause site.
+transcript location, nucleotide position, statistic of change, and p-value of change across conditions for each pause site.
 }
 \description{
 Takes as input a list of ribosome pause sites (the output of \code{get_pause_sites()}) and returns a
@@ -22,4 +25,6 @@ and differential expression (p-value, logFC).
 The function \code{\link{get_ps_change}} calls edgeR's methods to quantify change across conditions
 with a limited number of samples, producing a log fold-change (logFC) and p-value. You can read more about these methods
 \href{https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf}{here}.
+#' If \code{bayesian_adjust==TRUE}, the statistic of change is the log fold-change; else, the statistic of change is the
+t-statistic from a two-sample t-test.
 }

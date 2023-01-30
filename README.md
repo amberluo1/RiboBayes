@@ -32,13 +32,12 @@ RiboBayes uses the RiboR environment to process ribosome profiling data. First, 
 
 ```{bash}
 ! wget https://github.com/ribosomeprofiling/ribo_manuscript_supplemental/raw/master/sidrauski_et_al/ribo/without_coverage/all.ribo
-
 ```
 
 This data is from HEK293 cells (GEO accession number [GSE65778](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE65778)) and is publicly available.
 
 ```{r}
-#generates the 'ribo' class object 
+# generates the 'ribo' class object 
 ribo <- Ribo(PASTE PATH TO FILE HERE, rename = rename_default )
 ```
 
@@ -47,10 +46,10 @@ To familiarize yourself with the RiboR environment or to explore the .ribo file,
 For this vignette, we can select the top 500 highly expressed mRNA transcripts to detect pause sites on. Most mRNA transcripts with low expression are too noisy to reliably detect pause sites.
 
 ```{r}
-
 # Get all viable read lengths for analysis based on UTR expression (higher = less viable)
-lengths = get_read_lengths(ribo)
-lengths = as.numeric(lengths)
+
+lengths <- get_read_lengths(ribo)
+lengths <- as.numeric(lengths)
 
 rc_CDS <- get_region_counts(ribo.object    = ribo,
                             range.lower = lengths[[1]],
@@ -61,16 +60,14 @@ rc_CDS <- get_region_counts(ribo.object    = ribo,
                             normalize=TRUE,
                             region     = "CDS",
                             compact    = FALSE)
-
-region_lengths <- get_internal_region_lengths(ribo.object = ribo, alias = TRUE)
-cds=region_lengths%>%select(transcript, CDS)
-rc_CDS = rc_CDS %>% left_join(cds)%>%mutate(count=count/CDS)
+region_lengths <- get_internal_region_lengths(ribo.object = ribo, alias=TRUE)
+cds=region_lengths%>%dplyr::select(transcript, CDS)
+rc_CDS=rc_CDS%>%left_join(cds)%>%mutate(count=count/CDS)
 
 rc_CDS_w = dcast(rc_CDS[,-5], transcript ~ experiment)
-high_exp = rowSums( cpm(rc_CDS_w[,-1]) > 353) > 1
-sum(high_exp)
-
-high_transcripts=rc_CDS_w$transcript[high_exp]
+rc_CDS_w=rc_CDS_w%>%mutate(summed=rowSums( cpm(rc_CDS_w[,-1])))
+rc_CDS_w=rc_CDS_w%>%arrange(-summed)
+high_transcripts=rc_CDS_w[1:500,]$transcript
 ```
 
 Next, we find all the pause sites in this experiment with the `get_pause_sites()` function:

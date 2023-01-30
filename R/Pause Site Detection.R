@@ -1,5 +1,5 @@
 removepeaks=function(zcov_filtered, subwindow){
-  zcov_filtered=zcov_filtered%>%mutate(remove=0)
+  zcov_filtered=zcov_filtered%>%dplyr::mutate(remove=0)
   ncols=ncol(zcov_filtered)
   for(i in 1:nrow(zcov_filtered)){
     if(!(i==1) & zcov_filtered[[i, ncols]]==0){
@@ -23,7 +23,7 @@ removepeaks=function(zcov_filtered, subwindow){
       }
     }
   }
-  zcov_filtered=zcov_filtered%>%group_by(position)%>%mutate(sum=sum(remove))
+  zcov_filtered=zcov_filtered%>%group_by(position)%>%dplyr::mutate(sum=sum(remove))
   zcov_filtered=zcov_filtered%>%filter(sum<=0)
   return(zcov_filtered)
 }
@@ -33,10 +33,10 @@ wavetransform=function(cov){
   power=floor(log(max, 2))
   noise=c(rep(0.001,nrow(cov)))
   noise=jitter(noise, factor = 1, amount=NULL)
-  wavecov=cov%>%arrange(experiment)%>%ungroup()%>%mutate(noises=noise, ocounts=counts)
+  wavecov=cov%>%arrange(experiment)%>%ungroup()%>%dplyr::mutate(noises=noise, ocounts=counts)
   transformed=c()
   for(i in 1:length(experiments)){
-    subcov=wavecov%>%filter(experiment %in% experiments[i])%>%mutate(counts=counts+noises)
+    subcov=wavecov%>%filter(experiment %in% experiments[i])%>%dplyr::mutate(counts=counts+noises)
     noisecounts=subcov$counts
     noisecounts1=noisecounts[1:(2^power)]
     noisecounts2=noisecounts[(max-(2^power-1)):max]
@@ -57,7 +57,7 @@ wavetransform=function(cov){
 }
 differentialpeaks=function(set){
   exp=ncol(set)-1
-  set=set%>%mutate(statistic=0, p=0, significance=0)
+  set=set%>%dplyr::mutate(statistic=0, p=0, significance=0)
   for(i in 1:nrow(set)){
     temp=data.frame("id"=c(colnames(set[,c(2:(1+exp))])),
                     "group"=c(rep(1, exp/2), rep(2, exp/2)),
@@ -115,18 +115,63 @@ bayesian_p_adjust=function(sites, graph){
   qlfChange <- glmQLFTest(fit, contrast=my.contrasts[,"PS_CHANGE"])
   qlfChange=as.data.frame(qlfChange)
   qlfChange=qlfChange%>%rename(identifier=genes, p=PValue)%>%dplyr::select(identifier, p, logFC)%>%
-    mutate(position=as.numeric(sub(" .*", "", identifier)), transcript=sub(".* ", "", identifier))
+    dplyr::mutate(position=as.numeric(sub(" .*", "", identifier)), transcript=sub(".* ", "", identifier))
   if(length(get_experiments(ribo)>6)){
-    qlfChange=qlfChange[,c(1, 4, 5, 3, 2)]%>%rename(statistic=logFC)%>%mutate(statistic=-statistic)
+    qlfChange=qlfChange[,c(1, 4, 5, 3, 2)]%>%rename(statistic=logFC)%>%dplyr::mutate(statistic=-statistic)
   }
   return(qlfChange)
 }
-
+makeset=function(zcov, zcov_filtered){
+  if(nrow(zcov_filtered)==0){
+    return(0)
+  }
+  nrows=nrow(zcov_filtered)
+  max=max(zcov_filtered$position)
+  positions=unique(zcov_filtered$position)
+  count=length(positions)
+  mypositions=zcov%>%filter(position %in% positions)
+  set=dcast(mypositions, position ~ experiment,value.var="score")
+  if(nrow(set)==0){
+    return(0)
+  }
+  numexperiments=ncol(set)-1
+  set=set%>%mutate(avg1=rowMeans(set[,c(2:(numexperiments/2+1))]), avg2=rowMeans(set[,c((numexperiments/2+2):(numexperiments+1))]))
+  m=1
+  for(i in 1:nrow(set)){
+    if(set[[m,(2+numexperiments)]]<6 & set[[m,(3+numexperiments)]]<6){
+      set=set[-m,]
+      m=m-1
+    }
+    m=m+1
+  }
+  if(nrow(set)==0){
+    return(0)
+  }
+  set=set%>%dplyr::select(-avg1, -avg2)
+  positions=set$position
+  mypositions=zcov%>%group_by(experiment)%>%mutate(originalz=(count-mean(count))/sd(count))%>%filter(position %in% positions)
+  originalset=dcast(mypositions, position ~ experiment, value.var="originalz")
+  return(list(set, originalset))
+}
+makekappaset2=function(set){
+  kappaset=set
+  for(i in 1:nrow(set)){
+    for(j in 2:7){
+      if(set[[i,j]]>6){
+        kappaset[[i,j]]=1
+      }
+      else{
+        kappaset[[i,j]]=0
+      }
+    }
+  }
+  return(kappaset)
+}
 adjustscore=function(zcov){
   zcov=zcov%>%arrange(position)
   max=max(zcov$position)
   numexperiments=nrow(zcov)/max
-  zcov=zcov%>%mutate(localmean=0, localsd=0, group=0)
+  zcov=zcov%>%dplyr::mutate(localmean=0, localsd=0, group=0)
   ceiling=ceiling(max/101)
   allmeans=c()
   allsds=c()
@@ -140,7 +185,7 @@ adjustscore=function(zcov){
       sd=sd(subcov$counts)
       singlemeans=c(singlemeans, mean)
       singlesds=c(singlesds, sd)
-      subcov=subcov%>%mutate(localmean=mean, localsd=sd)
+      subcov=subcov%>%dplyr::mutate(localmean=mean, localsd=sd)
       localmean=subcov$localmean
       localsd=subcov$localsd
       allmeans=c(allmeans, localmean)
@@ -150,21 +195,21 @@ adjustscore=function(zcov){
   cov=zcov
   cov[,8]=allmeans
   cov[,9]=allsds
-  cov=cov%>%mutate(group=ceiling(position/101),adjmean=0, adjsd=0)
-  cov=cov%>%group_by(group)%>%mutate(percent=(position-group*101+50)/(100))
+  cov=cov%>%dplyr::mutate(group=ceiling(position/101),adjmean=0, adjsd=0)
+  cov=cov%>%group_by(group)%>%dplyr::mutate(percent=(position-group*101+50)/(100))
   cov2=cov%>%filter(group>1 & group < length(singlemeans)/2)
-  cov2=cov2%>%filter(score>4)%>%mutate(newscore=ifelse(percent==0, score, ifelse(percent<0, abs(percent)*(counts-singlemeans[group-1])/(singlesds[group-1])+((1-abs(percent))*(counts-localmean)/localsd),
+  cov2=cov2%>%filter(score>4)%>%dplyr::mutate(newscore=ifelse(percent==0, score, ifelse(percent<0, abs(percent)*(counts-singlemeans[group-1])/(singlesds[group-1])+((1-abs(percent))*(counts-localmean)/localsd),
                                                                                  ifelse(percent>0, percent*(counts-singlemeans[group+1])/(singlesds[group+1])+((1-percent)*(counts-localmean)/localsd), 0))))
   cov=cov%>%filter(score<=4)
-  cov2=cov2%>%mutate(score=newscore)%>%dplyr::select(-newscore)
+  cov2=cov2%>%dplyr::mutate(score=newscore)%>%dplyr::select(-newscore)
   cov=rbind(cov, cov2)
   cov=cov%>%arrange(position)
   return(cov)
 }
 wavelettransform=function(cov){
   no0=cov%>%filter(count>0)
-  no0=no0%>%group_by(experiment)%>%mutate(counts=count/mean(count))
-  cov=cov%>%filter(count==0)%>%mutate(counts=0)
+  no0=no0%>%group_by(experiment)%>%dplyr::mutate(counts=count/mean(count))
+  cov=cov%>%filter(count==0)%>%dplyr::mutate(counts=0)
   cov=rbind(cov, no0)
   cov=cov%>%arrange(position)
   no0=cov%>%filter(count>0)
@@ -174,8 +219,8 @@ wavelettransform=function(cov){
   no0=cov%>%filter(count>0)
   mean=mean(no0$counts)
   sd=sd(no0$counts)
-  zcov=cov%>%mutate(position=as.numeric(position))%>%group_by(experiment)%>%
-    mutate(score=(counts-mean)/(sd))%>%mutate(originalz=(ocounts-omean)/osd)
+  zcov=cov%>%dplyr::mutate(position=as.numeric(position))%>%group_by(experiment)%>%
+    dplyr::mutate(score=(counts-mean)/(sd))%>%dplyr::mutate(originalz=(ocounts-omean)/osd)
   zcov_filtered=zcov%>%filter(score>7)
   if(nrow(zcov_filtered)==0){
     return(0)
@@ -208,7 +253,7 @@ get_pause_sites_h=function(ribo, transcript, shifts, lengths, experiments, cores
     shifts=get_pshifts(ribo, lengths, experiments, FALSE)
   }
   cov=getpcov(ribo, transcript, lengths, experiments, graph=FALSE, shifts)
-  cov=cov%>%mutate(position=as.numeric(position))
+  cov=cov%>%dplyr::mutate(position=as.numeric(position))
   temp=wavelettransform(cov)
   if(is.double(temp)){
     return(0)
@@ -220,11 +265,11 @@ get_pause_sites_h=function(ribo, transcript, shifts, lengths, experiments, cores
   binary=temp[[4]]
   ah=differentialpeaks(originalset)
   allpeaks=ah[[1]]
-  allpeaks=allpeaks%>%mutate(transcript=transcript)%>%mutate(identifier=paste(position, transcript))%>%dplyr::select(identifier, position, transcript, statistic, p)
+  allpeaks=allpeaks%>%dplyr::mutate(transcript=transcript)%>%dplyr::mutate(identifier=paste(position, transcript))%>%dplyr::select(identifier, position, transcript, statistic, p)
   diffpeaks=ah[[2]]
-  diffpeaks=diffpeaks%>%mutate(transcript=transcript)%>%mutate(identifier=paste(position, transcript))%>%dplyr::select(identifier, position, transcript, statistic, p)
-  binary=binary%>%mutate(transcript=transcript, identifier=paste(position, transcript))
-  originalset=originalset%>%mutate(transcript=transcript, identifier=paste(position, transcript))
+  diffpeaks=diffpeaks%>%dplyr::mutate(transcript=transcript)%>%dplyr::mutate(identifier=paste(position, transcript))%>%dplyr::select(identifier, position, transcript, statistic, p)
+  binary=binary%>%dplyr::mutate(transcript=transcript, identifier=paste(position, transcript))
+  originalset=originalset%>%dplyr::mutate(transcript=transcript, identifier=paste(position, transcript))
   binary=binary[c(9, 1, 8, 2:7)]
   originalset=originalset[c(9, 1, 8, 2:7)]
   length=max(cov$position)

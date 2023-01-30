@@ -1,3 +1,5 @@
+# write documentation for these functions
+
 get_read_lengths=function(ribo, experiments, rc_threshold, ld_threshold){
   if(missing(rc_threshold)){
     rc_threshold=.85
